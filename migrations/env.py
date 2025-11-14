@@ -25,7 +25,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set the SQLAlchemy URL from our settings
-config.set_main_option("sqlalchemy.url", str(settings.POSTGRES_DB_URL))
+config.set_main_option("sqlalchemy.url", str(settings.SYNC_POSTGRES_DB_URL))
 
 # add your model's MetaData object here
 # for 'autogenerate' support

@@ -1,8 +1,8 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 from contextvars import ContextVar, Token
-from typing import Generator
-from typing import cast
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from app.config import settings
 from app.logging_config import logger
@@ -10,35 +10,44 @@ from app.logging_config import logger
 # Database URL
 POSTGRES_DB_URL = str(settings.POSTGRES_DB_URL)
 
+
 # Engine and Session
-engine = create_engine(
+async_engine = create_async_engine(
     POSTGRES_DB_URL,
     pool_pre_ping=True,
     pool_recycle=300,
     echo=settings.is_development,
 )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Async sessionmaker
+AsyncSessionLocal = sessionmaker(
+    bind=async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
 
 # Context var for async session management
-db_session: ContextVar[Session] = ContextVar("db_session")
+async_db_session: ContextVar[AsyncSession] = ContextVar("async_db_session")
 
-
-def get_db() -> Generator[Session, None, None]:
-    """Dependency for FastAPI to get database session"""
-    session = SessionLocal()
-    token: Token[Session] | None = None
+@asynccontextmanager
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """Async dependency for FastAPI to get database session"""
+    session = AsyncSessionLocal()
+    token: Token[AsyncSession] | None = None
     try:
-        token = db_session.set(session)
+        token = async_db_session.set(session)
         yield session
+        await session.commit()
     except Exception as e:
-        logger.error(f"Database session error: {e}")
-        session.rollback()
+        logger.error(f"Async database session error: {e}")
+        await session.rollback()
         raise
     finally:
-        session.close()
+        await session.close()
         if token:
-            db_session.reset(token)
+            async_db_session.reset(token)
 
 
 def run_migrations() -> None:

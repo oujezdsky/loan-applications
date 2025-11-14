@@ -13,7 +13,7 @@ from typing import Dict, List, Any
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from sqlalchemy import select
-from app.database import SessionLocal
+from app.sync_database import SessionLocal
 from app.models.enums import EnumType, EnumValue
 from app.logging_config import setup_logging, logger
 
@@ -185,7 +185,7 @@ async def main():
     db = SessionLocal()
     try:
         seeder = EnumSeeder(db)
-        stats = await seeder.seed()
+        await seeder.seed()
 
         logger.info("Enum seeding completed successfully!")
 

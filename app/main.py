@@ -9,6 +9,7 @@ from app.config import settings
 from app.utils.caching import (
     get_redis_client,
     wait_for_redis,
+    get_redis_for_subscriber,
     close_redis_pool,
     get_redis_pool,
 )
@@ -32,37 +33,38 @@ async def initialize_services():
         return None, None, None
 
     # 2. Initialize Redis client
-    redis_client = None
+    main_redis_client = None
     try:
         async for redis in get_redis_client():
-            redis_client = redis
+            main_redis_client = redis
             break
     except Exception as e:
         logger.error(f"Failed to initialize Redis client: {e}")
-        redis_client = None
+        main_redis_client = None
 
     # 3. Initialize database session for Pub/Sub
     db_session = None
     subscriber_task = None
 
-    if redis_client:
+    if main_redis_client:
         try:
-            db_session = next(get_db())
+            async with get_db() as db_session:
 
-            # 4. Start Pub/Sub subscriber with error handling
-            subscriber_task = asyncio.create_task(
-                enum_changes_subscriber(redis_client, db_session)
-            )
-            logger.info("Enum changes Pub/Sub subscriber started")
+                # 4. Start Pub/Sub subscriber
+                async with get_redis_for_subscriber() as pubsub_redis_client:
+                    asyncio.create_task(
+                        enum_changes_subscriber(pubsub_redis_client, db_session)
+                    )
+                    logger.info("Enum changes Pub/Sub subscriber started")
 
         except Exception as e:
             logger.error(f"Failed to initialize Pub/Sub subscriber: {e}")
             if db_session:
                 db_session.close()
             subscriber_task = None
-            redis_client = None
+            main_redis_client = None
 
-    return redis_client, db_session, subscriber_task
+    return main_redis_client, db_session, subscriber_task
 
 
 async def shutdown_services(redis_client, db_session, subscriber_task):

@@ -1,4 +1,3 @@
-import os
 from typing import Optional
 from pydantic import PostgresDsn, field_validator
 from pydantic_settings import BaseSettings
@@ -8,7 +7,8 @@ class Settings(BaseSettings):
     # Database
     POSTGRES_DB_URL: PostgresDsn
     TEST_POSTGRES_DB_URL: Optional[PostgresDsn] = None
-
+    SYNC_POSTGRES_DB_URL: PostgresDsn
+    SYNC_TEST_POSTGRES_DB_URL: Optional[PostgresDsn] = None
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 

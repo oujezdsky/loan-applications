@@ -45,16 +45,8 @@ start:
 	@echo "🔄 Running database migrations..."
 	docker compose run --rm web alembic upgrade head
 	@echo "🌱 Checking and seeding enum data..."
-	@if ! docker compose run --rm web python -c "\
-		import sys; sys.path.append('/app'); \
-		from app.database import SessionLocal; \
-		from app.models.enums import EnumType; \
-		db = SessionLocal(); \
-		count = db.query(EnumType).count(); \
-		db.close(); \
-		print(count); \
-	" | grep -q '[1-9]'; then \
-		echo "Seeding initial enum data..."; \
+	@if ! docker compose run --rm web python scripts/check_enum_count.py | grep -q '[1-9]'; then \
+		echo "🌱 Seeding initial enum data..."; \
 		docker compose run --rm web python scripts/seed_enums.py; \
 	else \
 		echo "✅ Enum data already exists."; \

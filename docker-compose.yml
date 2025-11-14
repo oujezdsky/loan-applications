@@ -40,7 +40,8 @@ services:
       - "8000:8000"
     environment:
       - ENVIRONMENT=development
-      - POSTGRES_DB_URL=postgresql://user:password@postgres:5432/loan_system
+      - POSTGRES_DB_URL=postgresql+asyncpg://user:password@localhost/loan_system
+      - SYNC_POSTGRES_DB_URL=postgresql://user:password@postgres:5432/loan_system
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=dev-secret-key-change-in-production
       - PYTHONPATH=/app
@@ -76,7 +77,7 @@ services:
     container_name: loan_system_celery
     environment:
       - ENVIRONMENT=development
-      - POSTGRES_DB_URL=postgresql://user:password@postgres:5432/loan_system
+      - POSTGRES_DB_URL=postgresql+asyncpg://user:password@localhost/loan_system
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=dev-secret-key-change-in-production
       - PYTHONPATH=/app
@@ -105,7 +106,7 @@ services:
     container_name: loan_system_celery_beat
     environment:
       - ENVIRONMENT=development
-      - POSTGRES_DB_URL=postgresql://user:password@postgres:5432/loan_system
+      - POSTGRES_DB_URL=postgresql+asyncpg://user:password@localhost/loan_system
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=dev-secret-key-change-in-production
       - PYTHONPATH=/app

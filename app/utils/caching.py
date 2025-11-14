@@ -3,6 +3,7 @@ from redis.exceptions import RedisError, ConnectionError
 from app.config import settings
 from app.logging_config import logger
 from typing import AsyncGenerator, Optional
+from contextlib import asynccontextmanager
 import asyncio
 
 
@@ -85,6 +86,16 @@ async def get_redis_client() -> AsyncGenerator[Redis, None]:
     finally:
         if redis_client:
             await redis_client.aclose()
+
+@asynccontextmanager
+async def get_redis_for_subscriber() -> AsyncGenerator[Redis, None]:
+    redis_client = Redis(connection_pool=get_redis_pool())
+    try:
+        if not await redis_client.ping():
+            raise RedisError("Redis ping failed")
+        yield redis_client
+    finally:
+        await redis_client.aclose()
 
 
 async def close_redis_pool():

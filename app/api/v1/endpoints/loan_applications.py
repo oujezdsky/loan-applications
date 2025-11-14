@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.schemas import (
@@ -24,7 +24,7 @@ router = APIRouter()
 )
 async def create_application(
     application_data: LoanApplicationCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     client_ip: str = Depends(get_client_ip),
     user_agent: str = Depends(get_user_agent),
 ):
@@ -50,7 +50,7 @@ async def create_application(
 
     try:
         application_service = LoanApplicationService(db)
-        result = application_service.create_application(
+        result = application_service.create_loan_application(
             application_data, client_ip, user_agent
         )
 
@@ -83,13 +83,13 @@ async def create_application(
     summary="Get application status",
     description="Check the current status of a loan application",
 )
-async def get_application_status(request_id: str, db: Session = Depends(get_db)):
+async def get_application_status(request_id: str, db: AsyncSession = Depends(get_db)):
     """
     Get the current status of a loan application by its request ID.
     """
 
     application_service = LoanApplicationService(db)
-    status_info = application_service.get_application_status(request_id)
+    status_info = application_service.get_loan_application_status(request_id)
 
     if not status_info:
         raise HTTPException(
