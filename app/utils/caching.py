@@ -1,14 +1,12 @@
 from redis.asyncio import Redis
-from app.config import Settings
+from app.config import Settings, settings
 from app.logging_config import logger
 from typing import AsyncGenerator
 from redis.exceptions import RedisError
 from fastapi import Depends
 
 
-async def get_redis_client(
-    settings: Settings = Depends(lambda: Settings()),  # type: ignore
-) -> AsyncGenerator[Redis, None]:
+async def get_redis_client() -> AsyncGenerator[Redis, None]:
     """Provide Redis client with automatic connection management."""
     redis = Redis.from_url(
         settings.REDIS_URL,

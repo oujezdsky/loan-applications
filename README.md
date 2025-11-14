@@ -9,48 +9,24 @@ git clone <repository-url>
 cd loan-applications
 make start
 
-
+# Make options
 make start        # 🚀 Full setup & start
-make start-quick  # 🚀 Quick background start  
+make start-quick  # 🚀 Quick background start
+make init-db      # 🗃️ Initialize database with migrations
 make stop         # 🛑 Stop all services
 make dev          # 🎯 Development server only
 make test         # 🧪 Run tests
 make lint         # 🎨 Code quality
-make shell        # 💻 Container shell
+make clean        # 🗑️ Docker cleanup (container, volumes...)
+make shell        # 💻 Container shell (used with make start-quick)
 make logs         # 📝 View logs
 make help         # 🆘 All commands
 
-# initial DB install
-docker compose run --rm web alembic revision --autogenerate -m "initial_tables"
-docker compose run --rm web alembic upgrade head
+# DB model update procedure
+make migrate-create message="add_new_col_to_zoo_table"
 
-
-# Start the development environment:
-make dev-all
-
-## Run specific services:
-
-bash
-# Just database
-make db-up
-
-# Web app only
-make dev
-
-# Celery worker only
-make worker
-
-# Run migrations
+# 2. Aplikujte migraci
 make migrate
-
-# Run tests:
-make test
-
-# Code quality:
-make lint
-
-# Rebuild everything
-make rebuild
 
 
 curl -X POST "http://localhost:8000/api/v1/applications" \

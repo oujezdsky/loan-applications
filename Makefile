@@ -1,8 +1,8 @@
-.PHONY: start start-quick stop dev test lint clean logs shell migrate
+.PHONY: start start-quick stop dev test lint clean logs shell migrate init-db
 
 # 🚀 Zero-configuration one-command setup
 start:
-	@echo "🚀 Starting Loan Application System"
+	@echo "🚀 Starting Loan Approval System - Enterprise Development Setup"
 	@echo "📦 Building and starting all services..."
 	docker compose build --no-cache
 	@echo "🔄 Starting infrastructure services..."
@@ -13,12 +13,31 @@ start:
 		sleep 3; \
 	done
 	@echo "✅ Databases are ready!"
+	@echo "🔍 Checking for existing migrations..."
+	@if [ -z "$$(ls -A migrations/versions/*.py 2>/dev/null)" ]; then \
+		echo "📝 No migrations found, generating initial migration..."; \
+		docker compose run --rm web alembic revision --autogenerate -m "initial_tables" || echo "⚠️  Migration generation completed (warnings are normal)"; \
+	fi
 	@echo "🔄 Running database migrations..."
 	docker compose run --rm web alembic upgrade head
 	@echo "🎯 Starting all application services..."
 	docker compose up
 
-# 🚀 Quick start (background services)
+# 🗃️ Initialize database with migrations
+init-db:
+	@echo "🗃️ Initializing database with migrations..."
+	@echo "🔍 Checking database connection..."
+	@until docker compose exec postgres pg_isready -U user -d loan_system > /dev/null 2>&1; do \
+		echo "Waiting for PostgreSQL..."; \
+		sleep 2; \
+	done
+	@echo "📝 Generating initial migration from models..."
+	docker compose run --rm web alembic revision --autogenerate -m "initial_tables"
+	@echo "🔄 Applying migrations..."
+	docker compose run --rm web alembic upgrade head
+	@echo "✅ Database initialized successfully!"
+
+# 🚀 Quick start (assumes migrations already exist)
 start-quick:
 	@echo "🚀 Quick starting all services in background..."
 	docker compose up -d
@@ -91,6 +110,7 @@ db-reset:
 	docker volume rm loan-applications_postgres_data || true
 	docker compose up -d postgres redis
 	@sleep 10
+	docker compose run --rm web alembic revision --autogenerate -m "initial_tables"
 	docker compose run --rm web alembic upgrade head
 
 # 📋 Status check
@@ -102,7 +122,8 @@ status:
 help:
 	@echo "Loan Approval System - Enterprise Development Commands:"
 	@echo "  make start        - 🚀 Full setup & start (one command for new developers)"
-	@echo "  make start-quick  - 🚀 Quick background start"
+	@echo "  make init-db      - 🗃️ Initialize database with migrations"
+	@echo "  make start-quick  - 🚀 Quick background start (migrations must exist)"
 	@echo "  make stop         - 🛑 Stop all services"
 	@echo "  make restart      - 🔄 Restart services"
 	@echo "  make dev          - 🎯 Start development server"

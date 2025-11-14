@@ -12,10 +12,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import expression
-from sqlalchemy.ext.declarative import declarative_base
 from app.models import Base
 
-Base = declarative_base()
+from app.models import Base
 
 
 class EnumType(Base):
