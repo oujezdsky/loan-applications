@@ -5,9 +5,10 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
-from redis.asyncio import Redis, PubSub
+from redis import Redis
+# from redis.asyncio import Redis as AsyncRedis
 from app.utils.caching import get_redis_client
-from app.db import get_db
+from app.database import get_db
 from app.models import EnumType, EnumValue
 from app.logging_config import logger
 
@@ -110,7 +111,7 @@ async def get_enum_full_info(
                     "label": val.label,
                     "display_order": val.display_order,
                     "is_active": val.is_active,
-                    "metadata": val.metadata,
+                    "meta_info": val.meta_info,
                 }
                 for val in values_list
             ],
@@ -154,7 +155,7 @@ async def enum_changes_subscriber(redis: Redis, db: AsyncSession):
 
     Automatically invalidates (and optionally refreshes) cache when enums are added, updated, or deleted.
     """
-    pubsub: PubSub = redis.pubsub()
+    pubsub = redis.pubsub()
     await pubsub.subscribe(
         "enum_changes"
     )  # Channel for listening to the changes from enum admin view

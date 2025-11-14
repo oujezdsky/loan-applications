@@ -3,20 +3,20 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 import uuid
 
-from app.models import Application, ApplicationStatus, AuditLog
-from app.schemas import ApplicationCreate
-from app.services import VerificationService
+from app.models import LoanApplication, LoanApplicationStatus, AuditLog
+from app.schemas import LoanApplicationCreate
 from app.logging_config import logger
 from app.config import settings
 
 
 class LoanApplicationService:
     def __init__(self, db: Session):
+        from app.services import VerificationService
         self.db = db
         self.verification_service = VerificationService(db)
 
     def create_loan_application(
-        self, application_data: ApplicationCreate, client_ip: str, user_agent: str
+        self, application_data: LoanApplicationCreate, client_ip: str, user_agent: str
     ) -> Dict[str, Any]:
         """Create new loan application with initial validation"""
 
@@ -30,7 +30,7 @@ class LoanApplicationService:
             )
 
             # Create application record
-            application = Application(
+            application = LoanApplication(
                 request_id=request_id,
                 email=application_data.email,
                 phone=application_data.phone,
@@ -49,7 +49,7 @@ class LoanApplicationService:
                 children_count=application_data.children_count,
                 requested_amount=application_data.requested_amount,
                 loan_purpose=application_data.loan_purpose,
-                status=ApplicationStatus.SUBMITTED,
+                status=LoanApplicationStatus.SUBMITTED,
                 expires_at=expires_at,
             )
 
@@ -96,8 +96,8 @@ class LoanApplicationService:
         """Get current status of an application"""
 
         application = (
-            self.db.query(Application)
-            .filter(Application.request_id == request_id)
+            self.db.query(LoanApplication)
+            .filter(LoanApplication.request_id == request_id)
             .first()
         )
 

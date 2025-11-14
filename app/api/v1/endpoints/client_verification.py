@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schemas.verification import (
-    VerificationRequest,
+from app.schemas import (
+    ContactVerificationRequest,
     VerificationResponse,
     VerificationInitResponse,
 )
-from app.services.verification import VerificationService
+from app.services import VerificationService
 
 router = APIRouter()
 
@@ -18,7 +18,7 @@ router = APIRouter()
     description="Start verification for a specific method (email, SMS, identity)",
 )
 async def initiate_verification(
-    verification_data: VerificationRequest, db: Session = Depends(get_db)
+    verification_data: ContactVerificationRequest, db: Session = Depends(get_db)
 ):
     """
     Initiate verification for email, SMS, or identity.
@@ -47,7 +47,7 @@ async def initiate_verification(
     description="Verify email, SMS, or identity based on verification_type.",
 )
 async def verify(
-    verification_data: VerificationRequest,
+    verification_data: ContactVerificationRequest,
     db: Session = Depends(get_db),
 ):
     service = VerificationService(db)
@@ -80,7 +80,7 @@ async def verify(
     description="Verify email address using the received verification code",
 )
 async def verify_email(
-    verification_data: VerificationRequest, db: Session = Depends(get_db)
+    verification_data: ContactVerificationRequest, db: Session = Depends(get_db)
 ):
     """
     Verify email address with the provided verification code.
@@ -109,7 +109,7 @@ async def verify_email(
     description="Verify phone number using the received SMS code",
 )
 async def verify_sms(
-    verification_data: VerificationRequest, db: Session = Depends(get_db)
+    verification_data: ContactVerificationRequest, db: Session = Depends(get_db)
 ):
     """
     Verify phone number with the provided SMS verification code.
@@ -138,7 +138,7 @@ async def verify_sms(
     description="Verify identity by manual decision",
 )
 async def verify_identity(
-    verification_data: VerificationRequest, db: Session = Depends(get_db)
+    verification_data: ContactVerificationRequest, db: Session = Depends(get_db)
 ):
     """
     Verify identity by manual decision.

@@ -14,7 +14,7 @@ from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
 
-from app.models.base import Base
+from app.models import Base
 
 
 class LoanApplicationStatus(enum.Enum):

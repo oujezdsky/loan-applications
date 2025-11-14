@@ -7,7 +7,7 @@ from app.schemas import (
     LoanApplicationResponse,
     LoanApplicationStatusResponse,
 )
-from app.services.application import LoanApplicationService
+from app.services import LoanApplicationService
 from app.api.dependencies import get_user_agent, get_client_ip
 from app.workers.tasks import process_application_workflow
 from app.logging_config import logger

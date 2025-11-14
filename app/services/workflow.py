@@ -2,12 +2,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from app.models import LoanApplication, LoanApplicationStatus, AuditLog
-from app.workers.tasks import (
-    preprocess_application,
-    enrich_application_data,
-    calculate_risk_score,
-)
 from app.logging_config import logger
+
 
 # TODO, outdated!
 class WorkflowService:
@@ -16,6 +12,11 @@ class WorkflowService:
 
     def execute_workflow(self, request_id: str) -> None:
         """Execute the complete workflow for an application"""
+        from app.workers.tasks import (
+            preprocess_application,
+            enrich_application_data,
+            calculate_risk_score,
+        )  # late import
 
         application = (
             self.db.query(LoanApplication)
@@ -98,14 +99,19 @@ class WorkflowService:
         if not completed:
             # In real implementation, this would use Celery's waiting mechanisms
             # or event-driven architecture
-            self._update_status(application, LoanApplicationStatus.AWAITING_VERIFICATION)
+            self._update_status(
+                application, LoanApplicationStatus.AWAITING_VERIFICATION
+            )
             # For now, we'll assume verification is complete for demo purposes
             pass
 
         self._update_status(application, LoanApplicationStatus.VERIFIED)
 
     def _update_status(
-        self, application: LoanApplication, status: LoanApplicationStatus, reason: str = None
+        self,
+        application: LoanApplication,
+        status: LoanApplicationStatus,
+        reason: str = None,
     ) -> None:
         """Update application status and create audit log"""
 

@@ -1,7 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from typing import Generator
+from typing import cast
 
 from app.config import settings
 from app.logging_config import logger
@@ -26,6 +27,7 @@ db_session: ContextVar[Session] = ContextVar("db_session")
 def get_db() -> Generator[Session, None, None]:
     """Dependency for FastAPI to get database session"""
     session = SessionLocal()
+    token: Token[Session] | None = None
     try:
         token = db_session.set(session)
         yield session
@@ -35,17 +37,15 @@ def get_db() -> Generator[Session, None, None]:
         raise
     finally:
         session.close()
-        db_session.reset(token)
-
-
-def init_db() -> None:
-    """Initialize database - now using Alembic for table creation"""
-    # Tables are created through migrations
-    logger.info("Database initialization - using Alembic migrations")
+        if token:
+            db_session.reset(token)
 
 
 def run_migrations() -> None:
-    """Run database migrations using Alembic"""
+    """
+    Run database migrations using Alembic,
+    can be used in CI/CD or in emergency cases.
+    """
     from alembic.config import Config
     from alembic import command
 

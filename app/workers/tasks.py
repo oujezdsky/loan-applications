@@ -1,7 +1,6 @@
-from celery import chain, group
+# from celery import chain, group
 from app.workers.celery_app import celery_app
 from app.database import get_db
-from app.services.workflow import WorkflowService
 from app.logging_config import logger
 import time
 
@@ -9,6 +8,8 @@ import time
 @celery_app.task(bind=True, max_retries=3)
 def process_application_workflow(self, request_id: str):
     """Main workflow task that orchestrates the entire application processing"""
+
+    from app.services import WorkflowService    # late import
 
     logger.info(f"Starting workflow for application: {request_id}")
 
@@ -61,7 +62,7 @@ def enrich_application_data(self, request_id: str):
 
     try:
         # Dummy enrichment implementation
-        time.sleep(3)   # Simulate API calls
+        time.sleep(3)  # Simulate API calls
 
         # In real implementation:
         # - Call credit registry
@@ -98,7 +99,7 @@ def calculate_risk_score(self, request_id: str):
 
     try:
         # Dummy scoring implementation
-        time.sleep(1)   # Simulate API calls
+        time.sleep(1)  # Simulate API calls
 
         # In real implementation:
         # - ML model inference [?]
@@ -131,6 +132,6 @@ def send_verification_code(verification_id: int, target: str, code: str):
     logger.info(f"Sending verification code to {target}")
 
     # Dummy implementation
-    time.sleep(1)   # Simulate API calls
+    time.sleep(1)  # Simulate API calls
 
     return {"status": "sent", "method": "email/sms", "target": target}

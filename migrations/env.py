@@ -12,18 +12,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 # Import your models and database configuration
 from app.config import settings
-from app.models.base import Base
-from app.models import (
-    EnumType,
-    EnumValue,
-    LoanApplication,
-    LoanApplicationStatus,
-    AuditLog,
-    Verification,
-    VerificationStatus,
-    VerificationType,
-    VerificationCategory,
-)  # noqa: F401
+from app.models import Base
+from app.models import enums, loan_application, client_verification
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

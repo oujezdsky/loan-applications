@@ -6,40 +6,53 @@ WORKDIR /app
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    postgresql-client \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
-RUN pip install --no-cache-dir poetry
+ENV POETRY_VERSION=2.2.1
+ENV POETRY_HOME=/opt/poetry
+ENV POETRY_VIRTUALENVS_CREATE=false
+ENV POETRY_NO_INTERACTION=1
 
-# Copy Poetry files
+RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
+
+# Copy dependency files first for better caching
 COPY pyproject.toml poetry.lock ./
 
 # Install dependencies
-RUN poetry config virtualenvs.create false && poetry install --no-root --only main
-
-# Copy application code
-COPY app/ ./app/
+RUN poetry install --no-root --no-ansi
 
 # Stage 2: Development
 FROM base AS development
 
-# Install development dependencies
-RUN poetry install --no-root
+# Create non-root user with specific UID for consistency
+RUN groupadd -r appuser -g 1000 && useradd -r -u 1000 -g appuser appuser
 
-# Expose port
+# Create migrations directory structure with correct permissions
+RUN mkdir -p /app/migrations/versions && \
+    chown -R appuser:appuser /app && \
+    chmod -R 755 /app
+
+# Switch to non-root user
+USER appuser
+
+# Copy application code
+COPY --chown=appuser:appuser . .
+
 EXPOSE 8000
 
-# Command is set in docker-compose.yml for hot-reload
-CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-
-# Stage 3: Production (optional, not used in local dev)
+# Stage 3: Production
 FROM base AS production
 
-# Install only production dependencies
-RUN poetry install --no-root --only main
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+RUN chown -R appuser:appuser /app
+USER appuser
 
-# Expose port
+# Copy application code
+COPY --chown=appuser:appuser . .
+
 EXPOSE 8000
-
-CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

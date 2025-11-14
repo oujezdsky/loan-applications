@@ -1,14 +1,13 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
+    container_name: loan_system_postgres
     environment:
       POSTGRES_DB: loan_system
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -16,16 +15,114 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - loan_network
 
   redis:
     image: redis:7-alpine
+    container_name: loan_system_redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - loan_network
+
+  web:
+    build:
+      context: .
+      target: development
+    container_name: loan_system_web
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - POSTGRES_DB_URL=postgresql://user:password@postgres:5432/loan_system
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - PYTHONPATH=/app
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - loan_network
+    command: >
+      sh -c "set -e &&
+            echo '🚀 Starting Loan System Startup Sequence' &&
+            python scripts/wait_for_db.py &&
+            echo '🗃️ Running database migrations...' &&
+            alembic upgrade head &&
+            echo '🎯 Starting application server...' &&
+            uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  celery_worker:
+    build:
+      context: .
+      target: development
+    container_name: loan_system_celery
+    environment:
+      - ENVIRONMENT=development
+      - POSTGRES_DB_URL=postgresql://user:password@postgres:5432/loan_system
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - PYTHONPATH=/app
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - loan_network
+    command: >
+      sh -c "set -e &&
+             echo 'Waiting for database...' &&
+             until pg_isready -h postgres -p 5432 -U user; do
+               sleep 2
+             done &&
+             echo 'Starting Celery worker...' &&
+             celery -A app.workers.celery_app worker --loglevel=info"
+
+  celery_beat:
+    build:
+      context: .
+      target: development
+    container_name: loan_system_celery_beat
+    environment:
+      - ENVIRONMENT=development
+      - POSTGRES_DB_URL=postgresql://user:password@postgres:5432/loan_system
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=dev-secret-key-change-in-production
+      - PYTHONPATH=/app
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - loan_network
+    command: >
+      sh -c "set -e &&
+             echo 'Waiting for database...' &&
+             until pg_isready -h postgres -p 5432 -U user; do
+               sleep 2
+             done &&
+             echo 'Starting Celery beat...' &&
+             celery -A app.workers.celery_app beat --loglevel=info"
 
 volumes:
   postgres_data:
+
+networks:
+  loan_network:
+    driver: bridge

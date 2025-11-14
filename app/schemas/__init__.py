@@ -9,6 +9,8 @@ from .client_verification import (
     ContactVerificationRequest,
     IdentityVerificationRequest,
     VerificationRequest,
+    VerificationInitResponse,
+    VerificationResponse,
 )
 
 __all__ = [
@@ -21,4 +23,6 @@ __all__ = [
     "ContactVerificationRequest",
     "IdentityVerificationRequest",
     "VerificationRequest",
+    "VerificationInitResponse",
+    "VerificationResponse",
 ]

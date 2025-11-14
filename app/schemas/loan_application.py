@@ -1,10 +1,10 @@
-from pydantic import BaseModel, EmailStr, validator, Field
+from pydantic import BaseModel, EmailStr, field_validator, Field, ValidationInfo
 from typing import List, Optional, Dict, Union
 from datetime import datetime, date
 from app.utils.enums import get_valid_enum_values
 import asyncio
 
-'''
+"""
 class HousingType(str, Enum):
     OWN = "vlastní"
     RENT = "nájem"
@@ -32,12 +32,13 @@ class IncomeSource(str, Enum):
     PENSION = "důchod"
     RENT = "nájem"
     OTHER = "jiné"
-'''
+"""
+
 
 class LoanApplicationCreate(BaseModel):
     # Personal Information
     email: EmailStr
-    phone: str = Field(..., regex=r"^\+?[1-9]\d{1,14}$")  # E.164 format
+    phone: str = Field(..., pattern=r"^\+?[1-9]\d{1,14}$")  # E.164 format
     full_name: str = Field(..., min_length=2, max_length=255)
     date_of_birth: date
     citizenship: str = Field(..., min_length=2, max_length=3)
@@ -60,8 +61,10 @@ class LoanApplicationCreate(BaseModel):
     requested_amount: float = Field(..., gt=0)
     loan_purpose: str = Field(..., min_length=10, max_length=1000)
 
-    @validator("date_of_birth")
+    @field_validator("date_of_birth")
     def validate_age(cls, v):
+        if not v:
+            raise ValueError("Date of birth must be specified")
         min_age = 18
         max_age = 100
         today = date.today()
@@ -74,41 +77,57 @@ class LoanApplicationCreate(BaseModel):
 
         return v
 
-    @validator("income_sources")
+    @field_validator("income_sources")
     def validate_income_sources(cls, v):
         if not v:
             raise ValueError("At least one income source must be specified")
         return v
 
-    @validator("housing_type", "income_type", "education_level", "marital_status",  pre=True, each_item=False)
-    def validate_enum(cls, v, field):
-        enum_name = field.name.replace("_", "").capitalize() + "Enum"  # Automatický mapping, uprav pokud potřeba
+    @field_validator(
+        "housing_type",
+        "income_sources",
+        "education_level",
+        "marital_status",
+        mode="before",
+    )
+    def validate_enum(cls, v, info: ValidationInfo):
+        field_name = info.field_name
+
+        enum_name = field_name.replace("_", "").capitalize() + "Enum"
         try:
-            info = asyncio.run(get_valid_enum_values(enum_name))
+            enum_info = asyncio.run(get_valid_enum_values(enum_name))
         except Exception as e:
-            raise ValueError(f"Failed to fetch enum info for {field.name}: {e}")
-        
-        valid_values = set(info["valid_values"])
-        is_multi = info["is_multi_select"]
-        max_selections = info.get("max_selections")
-        
+            raise ValueError(f"Failed to fetch enum info for {field_name}: {e}")
+
+        valid_values = set(enum_info["valid_values"])
+        is_multi = enum_info["is_multi_select"]
+        max_selections = enum_info.get("max_selections")
+
         if is_multi:
             if not isinstance(v, list):
-                raise ValueError(f"{field.name} must be a list for multi-select enums")
+                raise ValueError(f"{field_name} must be a list for multi-select enums")
             if len(v) == 0:
-                raise ValueError(f"{field.name} cannot be empty for this enum")  # Pokud required; jinak uprav
-            v = list(set(v))  # Odstraň duplicity automaticky
+                raise ValueError(f"{field_name} cannot be empty for this enum")
+            v = list(set(v))  # remove possible duplicity
             if max_selections and len(v) > max_selections:
-                raise ValueError(f"{field.name} exceeds max selections ({max_selections})")
+                raise ValueError(
+                    f"{field_name} exceeds max selections ({max_selections})"
+                )
             invalid = set(v) - valid_values
             if invalid:
-                raise ValueError(f"Invalid values in {field.name}: {invalid}. Valid: {', '.join(valid_values)}")
+                raise ValueError(
+                    f"Invalid values in {field_name}: {invalid}. Valid: {', '.join(valid_values)}"
+                )
         else:
             if not isinstance(v, str):
-                raise ValueError(f"{field.name} must be a single string for single-select enums")
+                raise ValueError(
+                    f"{field_name} must be a single string for single-select enums"
+                )
             if v not in valid_values:
-                raise ValueError(f"Invalid {field.name}: '{v}'. Valid: {', '.join(valid_values)}")
-        
+                raise ValueError(
+                    f"Invalid {field_name}: '{v}'. Valid: {', '.join(valid_values)}"
+                )
+
         return v
 
 

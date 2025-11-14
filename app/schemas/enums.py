@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, List
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import Optional, List
 
 
 class EnumTypeSchema(BaseModel):
@@ -32,7 +32,7 @@ class EnumValueSchema(BaseModel):
     )
     display_order: int = Field(..., description="Ordering index for display purposes")
     is_active: bool = Field(..., description="Indicates whether the value is active")
-    metadata: Optional[str] = Field(
+    meta_info: Optional[str] = Field(
         None,
         description="Optional additional metadata as a JSON string (e.g., {'icon': 'house.png'})",
     )

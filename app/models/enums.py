@@ -8,10 +8,12 @@ from sqlalchemy import (
     ForeignKey,
     func,
     event,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import expression
 from sqlalchemy.ext.declarative import declarative_base
+from app.models import Base
 
 Base = declarative_base()
 
@@ -62,8 +64,8 @@ class EnumValue(Base):
     label = Column(String(200), nullable=False)
     display_order = Column(Integer, default=0)
     is_active = Column(Boolean, server_default=expression.true(), default=True)
-    metadata = Column(
-        Text
+    meta_info = Column(
+        Text, nullable=True
     )  # JSON string, i.e. '{"icon": "wedding_ring.png", "color": "#bfff00"}'
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(
@@ -75,7 +77,7 @@ class EnumValue(Base):
     enum_type = relationship("EnumType", back_populates="values")
 
     __table_args__ = (
-        {"unique_constraints": [("unique_enum_value", ("enum_type_id", "value"))]},
+        UniqueConstraint('enum_type_id', 'value', name='uq_enum_type_value'),
     )
 
     def __repr__(self):

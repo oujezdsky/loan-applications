@@ -2,7 +2,7 @@ import enum
 from sqlalchemy import Column, Integer, String, DateTime, Enum, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
-from app.models.base import Base
+from app.models import Base
 
 
 class VerificationCategory(enum.Enum):
