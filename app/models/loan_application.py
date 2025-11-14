@@ -78,8 +78,7 @@ class LoanApplication(Base):
     expires_at = Column(DateTime(timezone=True))
 
     # Relationships
-    contact_verifications = relationship("ContactVerification", back_populates="loan_application")
-    identity_verifications = relationship("IdentityVerification", back_populates="loan_application")
+    verifications = relationship("Verification", back_populates="loan_application")
     audit_logs = relationship("AuditLog", back_populates="loan_application")
 
     def __repr__(self):

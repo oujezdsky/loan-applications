@@ -1,4 +1,28 @@
-.PHONY: start start-quick stop dev test lint clean logs shell migrate init-db
+.PHONY: start init-db seed seed-enums db-seed start-quick stop dev test lint clean logs shell migrate 
+
+# 🌱 Database seeding commands
+seed: seed-enums
+	@echo "✅ All seeding completed"
+
+seed-enums:
+	@echo "🌱 Seeding enum data..."
+	docker compose run --rm web python scripts/seed_enums.py
+
+# 🗃️ init-db with seeding
+init-db:
+	@echo "🗃️ Initializing database with migrations and seed data..."
+	@echo "🔍 Checking database connection..."
+	@until docker compose exec postgres pg_isready -U user -d loan_system > /dev/null 2>&1; do \
+		echo "Waiting for PostgreSQL..."; \
+		sleep 2; \
+	done
+	@echo "📝 Generating initial migration from models..."
+	docker compose run --rm web alembic revision --autogenerate -m "initial_tables"
+	@echo "🔄 Applying migrations..."
+	docker compose run --rm web alembic upgrade head
+	@echo "🌱 Seeding initial enum data..."
+	docker compose run --rm web python scripts/seed_enums.py
+	@echo "✅ Database initialized successfully with seed data!"
 
 # 🚀 Zero-configuration one-command setup
 start:
@@ -16,26 +40,27 @@ start:
 	@echo "🔍 Checking for existing migrations..."
 	@if [ -z "$$(ls -A migrations/versions/*.py 2>/dev/null)" ]; then \
 		echo "📝 No migrations found, generating initial migration..."; \
-		docker compose run --rm web alembic revision --autogenerate -m "initial_tables" || echo "⚠️  Migration generation completed (warnings are normal)"; \
+		docker compose run --rm web alembic revision --autogenerate -m "initial_tables" || echo "⚠️  Migration generation completed"; \
 	fi
 	@echo "🔄 Running database migrations..."
 	docker compose run --rm web alembic upgrade head
+	@echo "🌱 Checking and seeding enum data..."
+	@if ! docker compose run --rm web python -c "\
+		import sys; sys.path.append('/app'); \
+		from app.database import SessionLocal; \
+		from app.models.enums import EnumType; \
+		db = SessionLocal(); \
+		count = db.query(EnumType).count(); \
+		db.close(); \
+		print(count); \
+	" | grep -q '[1-9]'; then \
+		echo "Seeding initial enum data..."; \
+		docker compose run --rm web python scripts/seed_enums.py; \
+	else \
+		echo "✅ Enum data already exists."; \
+	fi
 	@echo "🎯 Starting all application services..."
 	docker compose up
-
-# 🗃️ Initialize database with migrations
-init-db:
-	@echo "🗃️ Initializing database with migrations..."
-	@echo "🔍 Checking database connection..."
-	@until docker compose exec postgres pg_isready -U user -d loan_system > /dev/null 2>&1; do \
-		echo "Waiting for PostgreSQL..."; \
-		sleep 2; \
-	done
-	@echo "📝 Generating initial migration from models..."
-	docker compose run --rm web alembic revision --autogenerate -m "initial_tables"
-	@echo "🔄 Applying migrations..."
-	docker compose run --rm web alembic upgrade head
-	@echo "✅ Database initialized successfully!"
 
 # 🚀 Quick start (assumes migrations already exist)
 start-quick:

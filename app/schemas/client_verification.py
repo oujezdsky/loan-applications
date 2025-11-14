@@ -18,7 +18,9 @@ class ContactVerificationRequest(BaseVerificationRequest):
 #   Identity verifikace (manuální, bez kódu)
 class IdentityVerificationRequest(BaseVerificationRequest):
     verification_type: Literal["identity_document"]
-    verification_status: VerificationStatus = Field(..., description="Manual verification status.")
+    verification_status: VerificationStatus = Field(
+        ..., description="Manual verification status."
+    )
     verification_code: None = Field(
         default=None, description="No code for manual verification"
     )
@@ -29,28 +31,6 @@ VerificationRequest = Union[
     ContactVerificationRequest,
     IdentityVerificationRequest,
 ]
-
-"""
-class EmailVerificationRequest(BaseModel):
-    request_id: str = Field(..., min_length=36, max_length=36)
-    verification_code: str = Field(..., min_length=4, max_length=10)
-
-
-class SmsVerificationRequest(BaseModel):
-    request_id: str = Field(..., min_length=36, max_length=36)
-    verification_code: str = Field(..., min_length=4, max_length=10)
-
-
-class IdentityVerificationRequest(BaseModel):
-    request_id: str = Field(..., min_length=36, max_length=36)
-"""
-
-# class VerificationRequest(BaseModel):
-#     request_id: str = Field(..., min_length=36, max_length=36)
-#     verification_code: str = Field(..., min_length=4, max_length=10)
-#     verification_type: str = Field(
-#         ..., enum=["email", "sms", "identity_document"]
-#     )
 
 
 class VerificationResponse(BaseModel):

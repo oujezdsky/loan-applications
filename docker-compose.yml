@@ -56,9 +56,16 @@ services:
     command: >
       sh -c "set -e &&
             echo '🚀 Starting Loan System Startup Sequence' &&
-            python scripts/wait_for_db.py &&
-            echo '🗃️ Running database migrations...' &&
+            echo '🔍 Checking database...' &&
+            until pg_isready -h postgres -p 5432 -U user; do
+              echo 'Waiting for Postgres...' &&
+              sleep 2
+            done &&
+            echo '✅ Database ready!' &&
+            echo '🔄 Running migrations...' &&
             alembic upgrade head &&
+            echo '🌱 Seeding enum data...' &&
+            python scripts/seed_enums.py &&
             echo '🎯 Starting application server...' &&
             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
