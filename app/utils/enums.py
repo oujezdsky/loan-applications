@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from redis import Redis
+
 # from redis.asyncio import Redis as AsyncRedis
 from app.utils.caching import get_redis_client
 from app.database import get_db
@@ -149,38 +150,54 @@ async def invalidate_enum_cache(
             logger.error(f"Failed to refresh cache for {enum_name}: {e}")
 
 
-async def enum_changes_subscriber(redis: Redis, db: AsyncSession):
+async def enum_changes_subscriber(redis_client, db_session):
     """
     Listen to enum changes via Redis PubSub.
 
     Automatically invalidates (and optionally refreshes) cache when enums are added, updated, or deleted.
     """
-    pubsub = redis.pubsub()
-    await pubsub.subscribe(
-        "enum_changes"
-    )  # Channel for listening to the changes from enum admin view
+    max_retries = 5
+    retry_delay = 2
 
-    while True:
+    for attempt in range(max_retries):
         try:
-            message = await pubsub.get_message(
-                ignore_subscribe_messages=True, timeout=1.0
+            async with redis_client.pubsub() as pubsub:
+                await pubsub.subscribe("enum_changes")
+                logger.info("Successfully subscribed to enum_changes channel")
+
+                async for message in pubsub.listen():
+                    if message["type"] == "message":
+                        try:
+                            payload = json.loads(message["data"])
+                            enum_name = payload.get("enum_name")
+                            action = payload.get(
+                                "action"
+                            )  # "insert", "update", "delete"
+                            if enum_name:
+                                # Invalidation + optional refresh (i.e. "update" or "insert" refresh=True)
+                                refresh = action in [
+                                    "update",
+                                    "insert",
+                                ]
+                                await invalidate_enum_cache(
+                                    enum_name, redis=redis, db=db, refresh=refresh
+                                )
+                        except json.JSONDecodeError as e:
+                            logger.warning(f"Invalid JSON in enum_changes message: {e}")
+
+        except (ConnectionError, TimeoutError) as e:
+            logger.error(
+                f"Redis connection lost (attempt {attempt + 1}/{max_retries}): {e}"
             )
-            if message and message.get("type") == "message":
-                try:
-                    payload = json.loads(message["data"])
-                    enum_name = payload.get("enum_name")
-                    action = payload.get("action")  # "insert", "update", "delete"
-                    if enum_name:
-                        # Invalidation + optional refresh (i.e. "update" or "insert" refresh=True)
-                        refresh = action in [
-                            "update",
-                            "insert",
-                        ]
-                        await invalidate_enum_cache(
-                            enum_name, redis=redis, db=db, refresh=refresh
-                        )
-                except json.JSONDecodeError as e:
-                    logger.warning(f"Invalid JSON in enum_changes message: {e}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(retry_delay * (attempt + 1))  # Increase the wait time after every failed attempt
+            else:
+                logger.error(
+                    "Max reconnection attempts reached for enum changes subscriber"
+                )
+                break
         except Exception as e:
-            logger.error(f"PubSub error: {e}. Reconnecting...")
-            await asyncio.sleep(5)  # TODO add retry mechanism...
+            logger.error(f"Unexpected error in enum changes subscriber: {e}")
+            await asyncio.sleep(retry_delay)
+
+    logger.error("Enum changes subscriber stopped")

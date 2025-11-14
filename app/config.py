@@ -12,6 +12,13 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    # Redis specific settings
+    REDIS_MAX_CONNECTIONS: int = 20
+    REDIS_SOCKET_TIMEOUT: int = 5
+    REDIS_SOCKET_CONNECT_TIMEOUT: int = 5
+    REDIS_RETRY_ON_TIMEOUT: bool = True
+    REDIS_HEALTH_CHECK_INTERVAL: int = 30
+
     # Security
     SECRET_KEY: str = "dev-secret-key-change-in-production"
     JWT_ALGORITHM: str = "HS256"
@@ -49,6 +56,17 @@ class Settings(BaseSettings):
     @property
     def is_testing(self):
         return self.ENVIRONMENT == "testing"
+
+    @property
+    def redis_connection_kwargs(self):
+        return {
+            "max_connections": self.REDIS_MAX_CONNECTIONS,
+            "socket_timeout": self.REDIS_SOCKET_TIMEOUT,
+            "socket_connect_timeout": self.REDIS_SOCKET_CONNECT_TIMEOUT,
+            "retry_on_timeout": self.REDIS_RETRY_ON_TIMEOUT,
+            "health_check_interval": self.REDIS_HEALTH_CHECK_INTERVAL,
+            "decode_responses": True,
+        }
 
     class Config:
         env_file = ".env"
