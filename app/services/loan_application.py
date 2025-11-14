@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
+from redis.asyncio import Redis
 from datetime import datetime, timedelta
 import uuid
 
@@ -7,19 +8,53 @@ from app.models import LoanApplication, LoanApplicationStatus, AuditLog
 from app.schemas import LoanApplicationCreate
 from app.logging_config import logger
 from app.config import settings
+from app.utils.enums import get_valid_enum_values
 
 
 class LoanApplicationService:
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, redis: Redis):
         from app.services import VerificationService
+
         self.db = db
+        self.redis = redis
         self.verification_service = VerificationService(db)
 
-    def create_loan_application(
+    async def _validate_dynamic_enums(self, application_data: LoanApplicationCreate):
+        """Helper method for dynamic enums validation."""
+
+        housing_info = await get_valid_enum_values(
+            "housing_type", db=self.db, redis=self.redis
+        )
+        if application_data.housing_type not in housing_info["valid_values"]:
+            raise ValueError(f"Invalid housing_type: {application_data.housing_type}")
+
+        education_info = await get_valid_enum_values(
+            "education_level", db=self.db, redis=self.redis
+        )
+        if application_data.education_level not in education_info["valid_values"]:
+            raise ValueError(
+                f"Invalid education_level: {application_data.education_level}"
+            )
+        marital_status_info = await get_valid_enum_values(
+            "martial_status", db=self.db, redis=self.redis
+        )
+        if application_data.marital_status not in marital_status_info["valid_values"]:
+            raise ValueError(
+                f"Invalid martial_status: {application_data.marital_status}"
+            )
+        income_type_info = await get_valid_enum_values(
+            "income_type", db=self.db, redis=self.redis
+        )
+        for income_type in application_data.income_type:
+            if income_type not in income_type_info["valid_values"]:
+                raise ValueError(f"Invalid income_type: {income_type}")
+
+    async def create_loan_application(
         self, application_data: LoanApplicationCreate, client_ip: str, user_agent: str
     ) -> Dict[str, Any]:
         """Create new loan application with initial validation"""
 
+        await self._validate_dynamic_enums(application_data)
         try:
             # Generate unique request ID
             request_id = str(uuid.uuid4())
@@ -37,15 +72,13 @@ class LoanApplicationService:
                 full_name=application_data.full_name,
                 date_of_birth=application_data.date_of_birth,
                 citizenship=application_data.citizenship,
-                housing_type=application_data.housing_type.value,
+                housing_type=application_data.housing_type,
                 address=application_data.address,
-                education_level=application_data.education_level.value,
+                education_level=application_data.education_level,
                 employment_status=application_data.employment_status,
                 monthly_income=application_data.monthly_income,
-                income_sources=[
-                    source.value for source in application_data.income_sources
-                ],
-                marital_status=application_data.marital_status.value,
+                income_sources=[source for source in application_data.income_sources],
+                marital_status=application_data.marital_status,
                 children_count=application_data.children_count,
                 requested_amount=application_data.requested_amount,
                 loan_purpose=application_data.loan_purpose,
@@ -54,17 +87,12 @@ class LoanApplicationService:
             )
 
             self.db.add(application)
-            self.db.commit()
-            self.db.refresh(application)
+            await self.db.commit()
+            await self.db.refresh(application)
 
             # Create audit log
-            self._create_audit_log(
+            await self._create_audit_log(
                 application.id, "APPLICATION_SUBMITTED", client_ip, user_agent
-            )
-
-            # Initialize verification process
-            verification_init = self.verification_service.initiate_verification(
-                application
             )
 
             logger.info(
@@ -80,7 +108,6 @@ class LoanApplicationService:
                 "request_id": request_id,
                 "status": "submitted",
                 "verification_required": True,
-                "verification_methods": verification_init["methods"],
                 "expires_at": expires_at.isoformat(),
             }
 
@@ -117,7 +144,7 @@ class LoanApplicationService:
             "last_updated": application.updated_at or application.submitted_at,
         }
 
-    def _create_audit_log(
+    async def _create_audit_log(
         self, application_id: int, event_type: str, ip_address: str, user_agent: str
     ) -> None:
         """Create audit log entry"""
@@ -130,4 +157,3 @@ class LoanApplicationService:
         )
 
         self.db.add(audit_log)
-        self.db.commit()

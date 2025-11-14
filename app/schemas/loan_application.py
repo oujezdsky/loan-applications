@@ -4,36 +4,6 @@ from datetime import datetime, date
 from app.utils.enums import get_valid_enum_values
 import asyncio
 
-"""
-class HousingType(str, Enum):
-    OWN = "vlastní"
-    RENT = "nájem"
-    WITH_PARENTS = "u rodičů"
-    WITH_PARTNER = "u partnera"
-    COOPERATIVE = "družstevní"
-
-
-class EducationLevel(str, Enum):
-    BASIC = "základní"
-    SECONDARY = "střední"
-    HIGHER = "vysokoškolské"
-
-
-class MaritalStatus(str, Enum):
-    MARRIED = "vdaná/ženatý"
-    SINGLE = "svobodný"
-    DIVORCED = "rozvedený"
-    WIDOWED = "ovdovělý"
-
-
-class IncomeSource(str, Enum):
-    EMPLOYMENT = "zaměstnání"
-    BUSINESS = "podnikání"
-    PENSION = "důchod"
-    RENT = "nájem"
-    OTHER = "jiné"
-"""
-
 
 class LoanApplicationCreate(BaseModel):
     # Personal Information

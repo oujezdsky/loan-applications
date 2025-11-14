@@ -31,6 +31,7 @@ AsyncSessionLocal = sessionmaker(
 # Context var for async session management
 async_db_session: ContextVar[AsyncSession] = ContextVar("async_db_session")
 
+
 @asynccontextmanager
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Async dependency for FastAPI to get database session"""
@@ -48,20 +49,3 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         await session.close()
         if token:
             async_db_session.reset(token)
-
-
-def run_migrations() -> None:
-    """
-    Run database migrations using Alembic,
-    can be used in CI/CD or in emergency cases.
-    """
-    from alembic.config import Config
-    from alembic import command
-
-    try:
-        alembic_cfg = Config("alembic.ini")
-        command.upgrade(alembic_cfg, "head")
-        logger.info("Database migrations completed successfully")
-    except Exception as e:
-        logger.error(f"Database migration failed: {e}")
-        raise

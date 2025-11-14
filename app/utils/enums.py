@@ -1,6 +1,5 @@
 import asyncio
 import json
-from typing import Set
 from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

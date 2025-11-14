@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Literal, Optional, Union
 from datetime import datetime
-from app.models import VerificationStatus
+from app.models import VerificationStatus, VerificationType, VerificationCategory
 
 
 #   Společné základy pro všechny typy verifikace
@@ -11,8 +11,9 @@ class BaseVerificationRequest(BaseModel):
 
 #   Contact (email nebo SMS) verifikace
 class ContactVerificationRequest(BaseVerificationRequest):
-    verification_type: Literal["email", "sms"]
+    verification_type: VerificationType
     verification_code: str = Field(..., min_length=4, max_length=10)
+    category: VerificationCategory
 
 
 #   Identity verifikace (manuální, bez kódu)

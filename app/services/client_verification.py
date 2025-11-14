@@ -140,11 +140,11 @@ class VerificationService:
     ) -> Dict[str, Any]:
         """Verify a code received by the user"""
 
-        from app.models import Application
+        from app.models import LoanApplication
 
         application = (
-            self.db.query(Application)
-            .filter(Application.request_id == request_id)
+            self.db.query(LoanApplication)
+            .filter(LoanApplication.request_id == request_id)
             .first()
         )
         if not application:

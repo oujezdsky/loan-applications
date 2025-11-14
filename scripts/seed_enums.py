@@ -21,8 +21,8 @@ from app.logging_config import setup_logging, logger
 # Enum data definition
 ENUM_SEED_DATA: List[Dict[str, Any]] = [
     {
-        "name": "MaritalStatusEnum",
-        "description": "Jste vdaná?",
+        "name": "martial_status",
+        "description": "Jste ženatý/vdaná?",
         "is_multi_select": False,
         "values": [
             {"value": "married", "label": "Ano", "display_order": 1},
@@ -32,7 +32,7 @@ ENUM_SEED_DATA: List[Dict[str, Any]] = [
         ],
     },
     {
-        "name": "HousingTypeEnum",
+        "name": "housing_type",
         "description": "Kde v tuto chvíli bydlíte?",
         "is_multi_select": False,
         "values": [
@@ -48,7 +48,7 @@ ENUM_SEED_DATA: List[Dict[str, Any]] = [
         ],
     },
     {
-        "name": "EducationLevelEnum",
+        "name": "education_level",
         "description": "Jaké máte nejvyšší dosažené vzdělání?",
         "is_multi_select": False,
         "values": [
@@ -61,7 +61,7 @@ ENUM_SEED_DATA: List[Dict[str, Any]] = [
         ],
     },
     {
-        "name": "IncomeSourceEnum",
+        "name": "income_type",
         "description": "Jaký je váš hlavní příjem?",
         "is_multi_select": True,
         "max_selections": 6,  # Limit multi-select to 3 choices
